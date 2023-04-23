@@ -4,6 +4,7 @@ import Plateau.PlateauAbstrait;
 
 import java.io.File;
 import java.io.FileWriter;
+import java.io.PrintWriter;
 import java.util.Scanner;
 import java.util.Stack;
 import java.io.FileNotFoundException;
@@ -37,32 +38,42 @@ public class PlateauConcret extends PlateauAbstrait {
 		pil_futur = new Stack<COUP>();
 	}
 
-	public PlateauConcret(String fichier) throws FileNotFoundException {
+	public PlateauConcret(String fichier){
 		// init class
 		pil_passer = new Stack<COUP>();
 		pil_futur = new Stack<COUP>();
 
-		// Init fichier
-		Scanner sc_f = new Scanner(new File(fichier));
-
 		// Init var
 		int val, x, y;
+		Scanner sc_f;
+
+		// Init fichier
+		try {
+			sc_f= new Scanner(new File(fichier));
+		}catch (Exception E){
+			System.out.println(fichier + " isn't accesible");
+			return;
+		}
 
 		// Tant que le fichier n'est pas vide, vérifie que le fichier est comforme et joue si il trouve un coup
-		while(sc_f.hasNext()){
-			try {
-				val = sc_f.nextInt();
-				x = sc_f.nextInt();
-				y = sc_f.nextInt();
-				pil_futur.push(new COUP(val, x, y));
-			}catch (Exception E) {
-				System.out.println(fichier + " isn't a save file");
-			}
+		try {
+			x = sc_f.nextInt();
+			y = sc_f.nextInt();
+			cases = new int[x][y];
+			while(sc_f.hasNext()) {
+					val = sc_f.nextInt();
+					x = sc_f.nextInt();
+					y = sc_f.nextInt();
+					pil_futur.push(new COUP(val, x, y));
+				}
+		}catch (Exception E) {
+			System.out.println(fichier + " isn't a save file");
 		}
+
 		while(peutRefaire()){
 			refais();
 		}
-
+		sc_f.close();
 	}
 
 	@Override
@@ -150,22 +161,28 @@ public class PlateauConcret extends PlateauAbstrait {
 	public void sauve(String fichier) throws Exception {
 		// Init fichier
 		File f = new File(fichier);
-		FileWriter w_f = new FileWriter(f);
+		f.setReadable(true);
+		f.setWritable(true);
+		PrintWriter w_f = new PrintWriter(f);
 
 		// Init var
 		String sauv_data = "";
 		COUP c;
 
-		// On vide la pile des coup dans pil_passer pour commencer par ecrire le dernier coup dans le fichier
-		while (!pil_futur.empty()) {
-			pil_passer.push(pil_futur.pop());
-		}
+		// on ecrit d'abort la taille du tableau
+		w_f.println(nbLignes()+" "+nbColonnes()+" ");
+
+//		// On vide la pile des coup dans pil_passer pour commencer par ecrire le dernier coup dans le fichier
+//		while (!pil_futur.empty()) {
+//			pil_passer.push(pil_futur.pop());
+//		}
 
 		//On creer le String de data de sauvegarde (i.e la liste des coup réaliser)
 		while(!pil_passer.empty()){
 			c = pil_passer.pop();
 			sauv_data += c.save_String() + " ";
 		}
-		w_f.write(sauv_data);
+		w_f.println(sauv_data);
+		w_f.close();
 	}
 }
