@@ -15,15 +15,18 @@ public class PlateauConcret extends PlateauAbstrait {
 	Stack<COUP> pil_futur;
 
 	public static class COUP {
-		public int val, x, y;
+		public int prev_val, val, x, y;
 
-		public COUP(int val, int x, int y) {
+		public COUP(int prev_val, int val, int x, int y) {
+			this.prev_val = prev_val;
 			this.val = val;
 			this.x = x;
 			this.y = y;
 		}
 
-		public String save_String() { return val + " " + x + " " + y ; }
+		public String save_String() { return prev_val + " " + val + " " + x + " " + y ; }
+
+		public int get_prev_val(){ return prev_val; }
 
 		public int get_val(){ return val; }
 
@@ -44,7 +47,7 @@ public class PlateauConcret extends PlateauAbstrait {
 		pil_futur = new Stack<COUP>();
 
 		// Init var
-		int val, x, y;
+		int prev_val, val, x, y;
 		Scanner sc_f;
 
 		// Init fichier
@@ -61,11 +64,12 @@ public class PlateauConcret extends PlateauAbstrait {
 			y = sc_f.nextInt();
 			cases = new int[x][y];
 			while(sc_f.hasNext()) {
-					val = sc_f.nextInt();
-					x = sc_f.nextInt();
-					y = sc_f.nextInt();
-					pil_futur.push(new COUP(val, x, y));
-				}
+				prev_val = sc_f.nextInt();
+				val = sc_f.nextInt();
+				x = sc_f.nextInt();
+				y = sc_f.nextInt();
+				pil_futur.push(new COUP(prev_val, val, x, y));
+			}
 		}catch (Exception E) {
 			System.out.println(fichier + " isn't a save file");
 		}
@@ -79,27 +83,32 @@ public class PlateauConcret extends PlateauAbstrait {
 	@Override
 	public void joue(int valeur, int i, int j) {
 		if (coupJouable(valeur, i, j)) {
-			fixeValeurCase(valeur, i, j);
-			pil_passer.push(new COUP(valeur, i, j));
+			// On incremente la pile avant de modifier la valeur
+			pil_passer.push(new COUP(cases[i][j], valeur, i, j));
 			while(!pil_futur.empty()) {
 				pil_futur.pop();
 			}
+			fixeValeurCase(valeur, i, j);
 		}else
 			throw new InvalidParameterException("Joue " + valeur + " en (" + i + ", " + j + ")");
 	}
 
 	@Override
 	public void efface(int ligne_min, int colonne_min, int ligne_max, int colonne_max) {
-		pil_passer.push(new COUP(-1, -1, -1));
+		// Borne pour traitement du cas effacer
+		pil_passer.push(new COUP(-1, -1, -1, -1));
+
 		for (int i=ligne_min; i<=ligne_max; i++) {
 			for (int j = colonne_min; j <= colonne_max; j++) {
+				// On recupére seulement les cases modifier
 				if (cases[i][j] != 0){
-					pil_passer.push(new COUP(cases[i][j], i, j));
+					pil_passer.push(new COUP(cases[i][j], 0, i, j));
 				}
 				fixeValeurCase(0, i, j);
 			}
 		}
-		pil_passer.push(new COUP(-1, -1, -1));
+		// Borne pour traitement du cas effacer
+		pil_passer.push(new COUP(-1, -1, -1 ,-1));
 	}
 
 	@Override
@@ -122,28 +131,37 @@ public class PlateauConcret extends PlateauAbstrait {
 
 	@Override
 	public void annule() {
+		// Recupere le dernier coup
 		COUP temp = pil_passer.pop();
+
+		// Test si c'était un efface ou un joue
 		if (temp.get_val() == -1){
 			pil_futur.push(temp);
 			temp = pil_passer.pop();
+			// si efface on récupére les emplacement et l'on replace les ancienne valeurs
 			while(temp.get_val() != -1){
 				pil_futur.push(temp);
-				fixeValeurCase(temp.get_val(), temp.get_x(), temp.get_y());
+				fixeValeurCase(temp.get_prev_val(), temp.get_x(), temp.get_y());
 				temp = pil_passer.pop();
 			}
 			pil_futur.push(temp);
 		}else{
+			// si joue on replace par l'ancienne valeur
 			pil_futur.push(temp);
-			fixeValeurCase(0, temp.get_x(), temp.get_y());
+			fixeValeurCase(temp.get_prev_val(), temp.get_x(), temp.get_y());
 		}
 	}
 
 	@Override
 	public void refais() {
+		// Recupere le prochain coup
 		COUP temp = pil_futur.pop();
+
+		// Test si c'était un efface ou un joue
 		if (temp.get_val() == -1){
 			pil_passer.push(temp);
 			temp = pil_futur.pop();
+			// si efface on récupére les emplacement et l'on replace par 0
 			while(temp.get_val() != -1){
 				pil_passer.push(temp);
 				fixeValeurCase(0, temp.get_x(), temp.get_y());
@@ -151,6 +169,7 @@ public class PlateauConcret extends PlateauAbstrait {
 			}
 			pil_passer.push(temp);
 		}else{
+			// si joue on replace par la du coup valeur
 			pil_passer.push(temp);
 			fixeValeurCase(temp.get_val(), temp.get_x(), temp.get_y());
 		}
